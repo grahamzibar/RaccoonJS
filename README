@@ -1,0 +1,5 @@
+Welcome to RaccoonJS!
+
+RaccoonJS is an agile JavaScript development framework that allows one to create as much reusable code as possible.  Keeping this DRY principle in mind, one can use this library of code to load only the scripts and classes one needs without having to worry about keeping the library small and compact.  This allows us to add to the library indefinitely while keeping our overhead small and resources free.
+
+Welcome to the new JavaScript.  Welcome to RaccoonJS!
