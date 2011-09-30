@@ -14,7 +14,7 @@ ScriptLoader.requireScript('ui.PageSlider', 'extensions.DOMTweener', function() 
 		var __self__ = this;
 		var containers = [container1, container2];
 		
-		this.duration = 1;
+		this.duration = 0.5;
 		this.targetZ = 1;
 		
 		var currentContainer = 0; // We use arguments here.
@@ -44,7 +44,7 @@ ScriptLoader.requireScript('ui.PageSlider', 'extensions.DOMTweener', function() 
 		
 		this.verticalSlide = function(obj, direction) {
 			obj.tween('top', {
-				'to': (obj.offsetHeight + 60) * direction,
+				'to': (obj.offsetHeight + 60) * -direction,
 				'unit': 'px',
 				'duration': __self__.duration,
 				'oncomplete': function() {
@@ -56,7 +56,7 @@ ScriptLoader.requireScript('ui.PageSlider', 'extensions.DOMTweener', function() 
 		
 		this.horizontalSlide = function(obj, direction) {
 			obj.tween('left', {
-				'to': (obj.offsetWidth + 60) * direction,
+				'to': (obj.offsetWidth + 60) * -direction,
 				'unit': 'px',
 				'duration': __self__.duration,
 				'oncomplete': function() {
