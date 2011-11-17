@@ -251,12 +251,7 @@
 				cache = {};
 				return rtrn;
 			};
-			this.onnotify;
-			
-			window.onerror = function (msg, url, linenumber) {
-				__self__.error(url ? url : settings.scripts.threadName, linenumber ? '@ ' + linenumber + ': ' : ': ', msg);
-				return true;
-			};
+			this.onnotify = null;
 		})(settings);
 		try {
 			window.console = console;
@@ -267,6 +262,10 @@
 	
 	if (!window.console) {
 		R.initConsole(settings);
+		window.onerror = function (msg, url, linenumber) {
+			R.Console.error(url ? url : settings.scripts.threadName, linenumber ? '@ ' + linenumber + ': ' : ': ', msg);
+			return true;
+		};
 	} else {
 		console = R.Console = window.console;
 		if (!settings.devMode()) {
