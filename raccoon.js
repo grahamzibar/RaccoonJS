@@ -7,58 +7,15 @@
 		window.R = R;
 	}
 	
-	R.MAIN_THREAD = '__main__';
-	var defaultPath = '';
-	var fileMatches = {};
-	var async = true;
-	
-	var settings = R.settings = new (function Settings(R, fileMatches) {
-		var __self__ = this;
-		var pathSet = false;
-		var version = '1.1';
-		var devMode = false;
-		
-		this.version = function() {
-			return version;
-		};
-		this.async = function(bool) {
-			if (!bool && bool != false)
-				return async;
-			async = bool || navigator.appName == "Microsoft Internet Explorer";
-			return bool;
-		};
-		this.devMode = function(setToDev) {
-			if (!setToDev && setToDev != false)
-				return devMode;
-			devMode = setToDev;
-			return setToDev;
-		};
-		this.setDefaultPath = function(path, force) {
-			if (pathSet && !force)
-				return;
-			pathSet = true;
-			defaultPath = path;
-		};
-		this.addPath = function(name, uri) {
-			fileMatches[name] = uri;
-		};
-		this.setPaths = function() {
-			var numOfRules = arguments.length;
-			for (var i = 0; i < numOfRules; i++) {
-				if (arguments[i].length == 2) {
-					__self__.addPath(arguments[i][0], arguments[i][1]);
-				}
-			}
-		};
-	})(R, fileMatches);
-	
 	(function helpers() {
-		Array.prototype.removeAt = function removeAt(index) {
-		if (index > -1 && index < this.length) {
-			this.splice(index, 1);
-			}
-		};
-		if (!Array.prototype.indexOf) { // IE
+		if (!Array.prototype.removeAt) {
+			Array.prototype.removeAt = function removeAt(index) {
+				if (index > -1 && index < this.length) {
+					this.splice(index, 1);
+				}
+			};
+		}
+		if (!Array.prototype.indexOf) {
 			Array.prototype.indexOf = function indexOf(val) {
 				var size = this.length;
 				for (var i = 0; i < size; i++) {
@@ -69,10 +26,108 @@
 				return -1;
 			};
 		}
-		Array.prototype.remove = function remove(obj) {
-			this.removeAt(this.indexOf(obj));
-		};
+		if (!Array.prototype.remove) {
+			Array.prototype.remove = function remove(obj) {
+				this.removeAt(this.indexOf(obj));
+			};
+		}
+		if (!Array.prototype.unshift) {
+			Array.prototype.unshift = function() {
+				var size = arguments.length;
+				for (var i = size; i > 0; i++) {
+					arguments[i] = arguments[i - 1];
+				}
+				arguments[0] = 0;
+				this.splice.apply(this, args);
+				return this.length;
+			};
+		}
 	})();
+	
+	R.MAIN_THREAD = '__main__';
+	var defaultPath = '';
+	var fileMatches = {};
+	var namespaces = new Array();
+	var async = true;
+	var extension = '.js';
+	var delimiter = '.';
+	var config = {};
+	
+	var settings = R.settings = new (function Settings(R, fileMatches, namespaces, config) {
+		var __self__ = this;
+		var pathSet = false;
+		var version = '1.2';
+		var devMode = true;
+		
+		this.version = function() {
+			return version;
+		};
+		this.async = function(bool) {
+			if (!bool && bool != false)
+				return async;
+			async = bool || window.importScripts
+			return bool;
+		};
+		this.devMode = function(setToDev) {
+			if (!setToDev && setToDev != false)
+				return devMode;
+			devMode = setToDev;
+			return setToDev;
+		};
+		this.extension = function(setExt) {
+			if (!setExt)
+				return extension;
+			extension = setExt;
+			return setExt;
+		};
+		this.delimiter = function(setDelim) {
+			if (!setDelim)
+				return delimiter;
+			delimiter = setDelim;
+			return setDelim;
+		};
+		this.defaultPath = this.setDefaultPath = function(path, force) {
+			if (!path) {
+				return defaultPath;
+			}
+			if (pathSet && !force)
+				return;
+			pathSet = true;
+			defaultPath = path;
+		};
+		this.addPath = function(name, uri) {
+			fileMatches[name] = uri;
+		};
+		this.removePath = function(name) {
+			delete fileMatches[name];
+		};
+		this.setPaths = function() {
+			var numOfRules = arguments.length;
+			for (var i = 0; i < numOfRules; i++) {
+				if (arguments[i].length == 2) {
+					__self__.addPath(arguments[i][0], arguments[i][1]);
+				}
+			}
+		};
+		this.addNamespace = function(package, directory) {
+			namespaces[namespaces.length] = { 'rule': new RegExp('^' + package), 'path': directory, 'levels': package.split(delimiter).length };
+			namespaces.sort(function(a, b) {
+				return b.levels - a.levels;
+			});
+		};
+		this.addConfig = function(libraryName, file) {
+			config[libraryName] = file;
+			if (file.path) {
+				__self__.addNamespace(libraryName, file.path);
+			}
+			var scripts = file.scripts;
+			for (var name in scripts) {
+				if (scripts[name].path) {
+					__self__.addPath(name, scripts[name].path);
+				}
+			}
+		};
+	})(R, fileMatches, namespaces, config);
 	
 	var console = R.Console = null;
 	R.initConsole = function(settings) {
@@ -122,7 +177,7 @@
 			this.error = function () {
 				notify(arguments, 'error');
 			};
-			this.assert = function () { // Review
+			this.assert = function () {
 				var newObj = {};
 				for (var i in arguments) {
 					if (i != 0) {
@@ -143,7 +198,7 @@
 				}
 				notify([title, ++counts[title]], 'count');
 			};
-			this.dir = function (obj) { // Review
+			this.dir = function (obj) {
 				if (typeof obj === 'object') {
 					notify([obj], 'dir');
 					return;
@@ -278,7 +333,7 @@
 	console.info('RaccoonJS v' + settings.version() + ' settings and console modules are ready');
 	console.info('Raccoon API is initializing');
 	
-	(function ScriptLoader(R, settings, console, paths, thread) {
+	(function ScriptLoader(R, settings, console, paths, namespaces, config, thread) {
 		var copyObject = function(obj) {
 			var copy = new Object();
 			for (var prop in obj) {
@@ -286,7 +341,6 @@
 			}
 			return copy;
 		};
-		
 		var library = {};
 		R.getLibrary = function() {
 			return copyObject(library);
@@ -303,7 +357,11 @@
 			if (paths[name]) {
 				return paths[name];
 			}
-			return defaultPath + (name.replace(/\./g, '/') + '.js').replace('.min.js', '.js');
+			var size = namespaces.length;
+			for (var i = 0; i < size; i++) {
+				
+			}
+			return defaultPath + (name.replace(new RegExp(delimiter, g), '/') + extension);
 		};
 		var isName = function(str) {
 			return str.indexOf('/') == -1;
@@ -330,10 +388,8 @@
 				if (allReady) {
 					return;
 				}
-				console.debug(newScript.name, 'is ready and will again attempt to execute its', newScript.dependents.length, 'dependents(s)');
 				newScript.onready();
 			} else if (!newScript.dependencies.length) {
-				console.debug(newScript.name, 'has ZERO dependencies and thus will attempt executing its', newScript.dependents.length, 'dependent(s).');
 				newScript.onready();
 			} else {
 				var ready = true;
@@ -344,13 +400,12 @@
 					}
 				}
 				if (ready) {
-					console.debug(newScript.name, 'has', newScript.dependencies.length, 'dependenc(y/ies) but they are all ready.', newScript.name, 'will attempt to execute its', newScript.dependents.length, 'dependent(s).');
 					newScript.onready();
 				}
 			}
 		};
 		var syncImport = function(script) {
-			importScript(script.url);
+			importScripts(script.url);
 			script.onload();
 			return script;
 		};
@@ -454,7 +509,6 @@
 				}
 				var waitingScripts = __self__.waitingScripts;
 				while (waitingScripts.length > 0) {
-					console.debug(name || url, 'is executing', waitingScripts.length, 'stalled function(s)');
 					var scriptMe = waitingScripts.shift();
 					if (scriptMe)
 						scriptMe();
@@ -472,28 +526,22 @@
 				}
 				var dependents = __self__.dependents;
 				size = dependents.length;
-				console.debug(name || url, 'is ready and will attempt to execute its', size, 'dependent(s)');
 				for (var i = 0; i < size; i++) {
 					if (dependents[i].ready) {
-						console.debug(name || url, 'is skipping the attempt to execute', dependents[i].name, 'since it is READY');
 						continue;
 					}
 					var sibs = dependents[i].dependencies;
 					var executeDependent = true;
 					var length = sibs.length;
-					console.debug(name || url, 'in relation to', dependents[i].name, 'has', length - 1, 'sibling scripts');
 					for (var j = 0; j < length; j++) {
 						if (url != sibs[j].url) {
-							console.debug(name || url + '\'s sibling', sibs[j].name, 'is', (sibs[j].ready ? '' : 'not ') + 'ready');
 							if (!sibs[j].ready) { // Review -  This checks itself... need to change that.
 								executeDependent = false;
-								console.debug('Skipping checking the rest of', name + '\'s', 'siblings');
 								break;
 							}
 						}
 					}
 					if (executeDependent) {
-						console.debug(name, 'is calling on its dependent', dependents[i].name, 'to execute');
 						dependents[i].onready();
 					}
 				}
@@ -501,7 +549,6 @@
 			this.unloadScript;
 			this.unload = function (dependentScript) {
 				var dependents = __self__.dependents;
-				console.debug(__self__.name, 'has', dependents.length, 'scripts which rely on it');
 				if (dependentScript != thread) {
 					var tempScript = library[dependenScript];
 					__self__.removeDependent(dependentScript);
@@ -511,7 +558,7 @@
 					dependentCache = {};
 				if (__self__.name && dependents.length == 0) {
 					dependentScript.removeDependency(__self__);
-					var package = __self__.name.split('.');
+					var package = __self__.name.split(delimiter);
 					for (var i = 0; i < package.length; i++) {
 						var reference = window;
 						var pkgLvl = packages;
@@ -543,7 +590,6 @@
 					while (dependencies.length > 0) {
 						dependencies.unload(__self__);
 					}
-					console.debug(__self__.name, 'has been successfully removed');
 				} else {
 					console.warn('Cannot remove', __self__.name, 'as other libraries rely on it');
 				}
@@ -553,7 +599,7 @@
 			};
 		};
 		R.registerNamespace = function(namespace) {
-			var spaces = namespace.split('.');
+			var spaces = namespace.split(delimiter);
 			var size = spaces.length;
 			if (spaces[size - 1] == 'min') {
 				size -= 1;
@@ -594,10 +640,8 @@
 				if (library[url] && library[url].requested) {
 					var script = library[url];
 					if (script.loaded) {
-						console.debug(name || url, 'is already downloaded');
 						callback({ 'scriptName': name, 'url': url, 'namespace':name ? R.registerNamespace(name) : null });
 					} else {
-						console.debug(name || url, 'is already requested but has yet to download');
 						script.callbacks[0] = callback;
 					}
 					return script;
@@ -609,22 +653,40 @@
 				name = script.name;
 				if (script.requested) {
 					if (script.loaded) {
-						console.debug(name || url, 'is already downloaded');
 						callback({ 'scriptName': name, 'url': url, 'namespace':name ? R.registerNamespace(name) : null });
 					} else {
-						console.debug(name, 'is already requested but has yet to download');
 						script.callbacks[script.callbacks.length] = callback;
 					}
 					return script;
 				}
 			}
 			script.requested = true;
-			console.debug(name || url, 'has been requested for download');
 			script.callbacks[script.callbacks.length] = callback;
 			if (settings.async()) {
 				return asyncImport(script);
 			} else {
 				return syncImport(script);
+			}
+		};
+		var nodeSetup = function(dependent, dependency) {
+			var requiredUrl = args[i];
+			var requiredName = false;
+			if (isName(requiredUrl)) {
+				requiredName = requiredUrl;
+				requiredUrl = convertToUrl(requiredUrl);
+			}
+			var newScript = library[requiredUrl] ? library[requiredUrl] : new ScriptNode(requiredUrl, requiredName);
+			listeningScript.addDependency(newScript);
+			newScript.addDependent(listeningScript);
+			var space = name.split(delim)[0];
+			if (!config[space] || !config[space].scripts[name] || !config[space].scripts[name].dependencies || config[space].scripts[name].dependencies.length == 0) {
+				includeRequirement(newScript);
+			} else {
+				var deps = config[space].scripts[name].dependencies;
+				var max = deps.length;
+				for (var i = 0; i < max; i++) {
+					nodeSetup(newScript, deps[i]);
+				}
 			}
 		};
 		var requireScripts = function(hasName, args) {
@@ -639,9 +701,7 @@
 			}
 			if (library[url]) {
 				listeningScript = library[url];
-				console.debug('**', listeningScript.name, 'has downloaded and is now asking for its dependencies **');
 			} else {
-				console.debug('** Creating new script loading thread **');
 				listeningScript = threads[threads.length] = new ScriptNode(url, name);
 				listeningScript.requested = listeningScript.loaded = true;
 			}
@@ -654,31 +714,9 @@
 				listeningScript.waitingScripts[listeningScript.waitingScripts.length] = args[size];
 			}
 			listeningScript.ready = false;
-			console.debug(listeningScript.name, 'has', size - 1, 'dependenc(y/ies).');
 			for (var i = hasName ? 1 : 0; i < size; i++) {
-				var requiredUrl = args[i];
-				var requiredName = false;
-				if (isName(requiredUrl)) {
-					requiredName = requiredUrl;
-					requiredUrl = convertToUrl(requiredUrl);
-				}
-				var newScript = library[requiredUrl] ? library[requiredUrl] : new ScriptNode(requiredUrl, requiredName);
-				if (settings.devMode()) {
-					if (newScript.ready) {
-						console.debug(i + ')', listeningScript.name, 'requires', newScript.name, 'and it is ready to execute', listeningScript.name + '.');
-					} else if (newScript.loaded) {
-						console.debug(i + ')', listeningScript.name, 'requires', newScript.name, 'and it is already downloaded but it is waiting on its', newScript.dependencies.length, 'dependenc(y/ies) before executing.');
-					} else if (newScript.requested) {
-						console.debug(i + ')', listeningScript.name, 'requires', newScript.name, 'and it is already requested. It has yet to download.');
-					} else {
-						console.debug(i + ')', listeningScript.name, 'is appending the script', newScript.name, 'with source:', newScript.url, 'to the DOM.');
-					}
-				}
-				listeningScript.addDependency(newScript);
-				newScript.addDependent(listeningScript);
-				includeRequirement(newScript);
+				nodeSetup();
 			}
-			console.debug('**', listeningScript.name, 'has been parsed and finished asking for its', listeningScript.dependencies.length, 'dependenc(y/ies). **');
 		};
 		R.imports = function() {
 			requireScripts(false, arguments);
@@ -687,14 +725,12 @@
 			requireScripts(true, arguments);
 		};
 		R.remove = function(toRemove, sourceName) {
-			console.debug(sourceName || thread, 'is removing', toRemove, 'from the DOM');
 			var toRemove = getScriptNode(toRemove);
 			if (toRemove) {
 				toRemove.unload(sourceName && sourceName != thread ? getScriptNode(sourceName) : thread);
 			}
 		};
 		console.info('RaccoonJS script loading system is loaded');
-	})(R, settings, console, fileMatches, R.MAIN_THREAD);
-	
+	})(R, settings, console, fileMatches, namespaces, config, R.MAIN_THREAD);
 	console.info('RaccoonJS is ready');
 })();

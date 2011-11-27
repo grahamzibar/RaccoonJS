@@ -3,6 +3,7 @@ R.require('utils.Timer', 'events.EventDispatcher', function() {
 		var __self__ = this;
 		this.inheritFrom = events.EventDispatcher;
 		this.inheritFrom();
+		delete this.inheritFrom;
 		
 		var timer = false;
 		var timeLapse = 0;

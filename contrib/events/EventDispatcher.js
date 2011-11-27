@@ -46,7 +46,6 @@
 			maxRuns = -1;
 		}
 	};
-
 	ePkg.EventDispatcher = function () {
 		var home = this;
 		var events = {};
