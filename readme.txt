@@ -1,3 +1,3 @@
-RaccoonJS v1.1 -- MPL 1.1 - http://www.raccoonjs.org/license
+RaccoonJS v1.2 -- MPL 1.1 - http://www.raccoonjs.org/license
 	
-Please visit http://www.raccoonjs.org/docs for more information, holmes.
+Please visit http://www.raccoonjs.org/ for more information, holmes.
