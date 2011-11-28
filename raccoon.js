@@ -94,6 +94,7 @@
 				return;
 			pathSet = true;
 			defaultPath = path;
+			console.debug('Raccoon wants to snoop in', defaultPath);
 		};
 		this.addPath = function(name, uri) {
 			fileMatches[name] = uri;
@@ -330,8 +331,9 @@
 		}
 	}
 	
-	console.info('RaccoonJS v' + settings.version() + ' settings and console modules are ready');
-	console.info('Raccoon API is initializing');
+	console.info('RaccoonJS v' + settings.version());
+	console.info('Settings and Console are setting and consoling');
+	console.info('API is waking up');
 	
 	(function ScriptLoader(R, settings, console, paths, namespaces, config, thread) {
 		var copyObject = function(obj) {
@@ -361,7 +363,7 @@
 			for (var i = 0; i < size; i++) {
 				
 			}
-			return defaultPath + (name.replace(new RegExp(delimiter, g), '/') + extension);
+			return defaultPath + (name.replace(new RegExp('\\' + delimiter, 'g'), '/') + extension);
 		};
 		var isName = function(str) {
 			return str.indexOf('/') == -1;
@@ -437,6 +439,9 @@
 		var ScriptNode = function ScriptNode(url, name) {
 			var __self__ = this;
 			if (url != thread) {
+				if (name) {
+					R.registerNamespace(name);
+				}
 				library[url] = this;
 			}
 			this.requested = false;
@@ -494,7 +499,7 @@
 				var callbacks = __self__.callbacks;
 				var size = callbacks.length;
 				for (var i = 0; i < size; i++) {
-					callbacks[i]({ 'scriptName': name || null, 'url': url, 'namespace':name ? R.registerNamespace(name) : null });
+					callbacks[i]({ 'scriptName': name || null, 'url': url });
 				}
 				__self__.callbacks = new Array();
 				return true;
@@ -520,7 +525,7 @@
 						throw 'Top level thread is not accessible';
 						return;
 					}
-					console.info('Thread #' + (index + 1), 'loaded', '[' + __self__.dependencies.join(', ') + ']', 'and executed successfully');
+					console.info('Thread #' + (index + 1), 'ate', '[' + __self__.dependencies.join(', ') + ']', 'and digested');
 					//threads.removeAt(index);
 					return;
 				}
@@ -598,13 +603,29 @@
 				return __self__.name || __self__.url;
 			};
 		};
-		R.registerNamespace = function(namespace) {
+		R.createNamespace = function(namespace) {
+			if (library[convertToUrl(namespace)]) {
+				return;
+			}
 			var spaces = namespace.split(delimiter);
 			var size = spaces.length;
-			if (spaces[size - 1] == 'min') {
-				size -= 1;
-				spaces.pop();
+			namespace = window;
+			var pkgLvl = packages;
+			for (var i = 0; i < size; i++) {
+				var node = spaces[i];
+				if (!namespace[node]) {
+					namespace[node] = new Object();
+				}
+				namespace = namespace[node];
 			}
+			return namespace;
+		};
+		R.registerNamespace = function(namespace) {
+			if (library[convertToUrl(namespace)]) {
+				return;
+			}
+			var spaces = namespace.split(delimiter);
+			var size = spaces.length;
 			namespace = window;
 			var pkgLvl = packages;
 			for (var i = 0; i < size; i++) {
@@ -617,7 +638,7 @@
 						'count': 1
 					};
 				} else {
-					pkgLvl[node] += 1;
+					pkgLvl[node].count += 1;
 				}
 				namespace = namespace[node];
 				pkgLvl = pkgLvl[node];
@@ -640,7 +661,7 @@
 				if (library[url] && library[url].requested) {
 					var script = library[url];
 					if (script.loaded) {
-						callback({ 'scriptName': name, 'url': url, 'namespace':name ? R.registerNamespace(name) : null });
+						callback({ 'scriptName': name, 'url': url });
 					} else {
 						script.callbacks[0] = callback;
 					}
@@ -653,7 +674,7 @@
 				name = script.name;
 				if (script.requested) {
 					if (script.loaded) {
-						callback({ 'scriptName': name, 'url': url, 'namespace':name ? R.registerNamespace(name) : null });
+						callback({ 'scriptName': name, 'url': url });
 					} else {
 						script.callbacks[script.callbacks.length] = callback;
 					}
@@ -668,17 +689,20 @@
 				return syncImport(script);
 			}
 		};
-		var nodeSetup = function(dependent, dependency) {
-			var requiredUrl = args[i];
+		var nodeSetup = function(listeningScript, requiredUrl) {
+			console.debug(requiredUrl, 'is finding its way in the world');
 			var requiredName = false;
 			if (isName(requiredUrl)) {
 				requiredName = requiredUrl;
 				requiredUrl = convertToUrl(requiredUrl);
 			}
+			console.debug(requiredUrl, 'is becoming a beautiful script');
 			var newScript = library[requiredUrl] ? library[requiredUrl] : new ScriptNode(requiredUrl, requiredName);
+			console.debug(listeningScript.name, 'is getting to know', newScript.name);
 			listeningScript.addDependency(newScript);
 			newScript.addDependent(listeningScript);
-			var space = name.split(delim)[0];
+			console.debug(listeningScript.name, '<3\'s', newScript.name);
+			var space = name.split(delimiter)[0];
 			if (!config[space] || !config[space].scripts[name] || !config[space].scripts[name].dependencies || config[space].scripts[name].dependencies.length == 0) {
 				includeRequirement(newScript);
 			} else {
@@ -693,7 +717,7 @@
 			var listeningScript;
 			var url = hasName ? args[0] : thread;
 			var name = false;
-			if (url != thread) {
+			if (url != thread && isName(url)) {
 				name = url;
 				url = convertToUrl(name);
 			} else {
@@ -715,7 +739,7 @@
 			}
 			listeningScript.ready = false;
 			for (var i = hasName ? 1 : 0; i < size; i++) {
-				nodeSetup();
+				nodeSetup(listeningScript, args[i]);
 			}
 		};
 		R.imports = function() {
@@ -730,7 +754,7 @@
 				toRemove.unload(sourceName && sourceName != thread ? getScriptNode(sourceName) : thread);
 			}
 		};
-		console.info('RaccoonJS script loading system is loaded');
+		console.info('ScriptLoader is scripting');
 	})(R, settings, console, fileMatches, namespaces, config, R.MAIN_THREAD);
-	console.info('RaccoonJS is ready');
+	console.info('RaccoonJS is alive!');
 })();

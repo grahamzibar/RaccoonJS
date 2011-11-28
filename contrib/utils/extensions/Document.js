@@ -1,6 +1,4 @@
-R.registerNamespace('utils.extensions.Document');
-
-utils.extensions.Document = new (function() {
+contrib.utils.extensions.Document = new (function() {
 	document.getMouseXY = function(e) {
 		var posX = 0;
 		var posY = 0;
@@ -23,7 +21,7 @@ utils.extensions.Document = new (function() {
 				posY = e.targetTouches.pageY;
 			}
 		} else {
-			alert("Your browser does not support optaining cursor coordinates...\nPlease update your browser.\nK THNX BAI LOLZ!!!1!!ONE!");
+			alert("Your browser does not support obtaining cursor coordinates...\nPlease update your browser.\nK THNX BAI LOLZ!!!1!!ONE!");
 		}
 		return { 'posX': posX, 'posY': posY };
 	};
