@@ -1,5 +1,8 @@
 (function () {
-	var ePkg = contrib.events.EventDispatcher;
+	if (!window.events) {
+		events = new Object();
+	}
+	var ePkg = window.events;
 	var serialNumber = 0;
 	var STATUS_KOSHER = "kosher";
 	var STATUS_CANCELLED = "taboo";
