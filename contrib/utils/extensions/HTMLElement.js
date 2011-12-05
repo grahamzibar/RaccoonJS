@@ -1,6 +1,6 @@
 (function __elements__() {
 	var init = function init(mustCalibrate) {
-		utils.extensions.HTMLElement = new (function Elements() {
+		contrib.utils.extensions.HTMLElement = new (function Elements() {
 			HTMLElement.prototype.getStyle = function getStyle(style) {
 				if (document.defaultView && document.defaultView.getComputedStyle) {
 					return document.defaultView.getComputedStyle(this, false).getPropertyValue(style);
@@ -121,7 +121,7 @@
 
 			// container is either an HTMElement or a position/coordinate object
 			HTMLElement.prototype.inView = function inView(container) {
-				// using the position and bounds of the container, we check if this elements is within those bounds
+				// using the position and bounds of the container, we check if this element is within those bounds
 				if (!container.posX) {
 					var pos = container.getXY();
 					pos.width = container.offsetWidth;
@@ -133,15 +133,28 @@
 				delete elXY;
 				return XY.posX < container.width && XY.posX > -this.offsetWidth && XY.posY < container.height && XY.posY > -this.offsetHeight;
 			};
+			
+			if (!HTMLElement.prototype.addEventListener) {
+				HTMLElement.prototype.addEventListener = function(evnt, fn) {
+					this.attachEvent('on' + evnt, fn);
+				};
+				
+				HTMLElement.prototype.removeEventListener = function(evnt, fn) {
+					this.detachEvent('on' + evnt, fn);
+				};
+			}
 		})();
 	};
 
 	if (!window.HTMLElement) {
-		ScriptLoader.requireScript('utils.extensions.HTMLElement', 'utils.extensions.IEHTMLElement', function() {
+		R.require('contrib.utils.extensions.HTMLElement',
+		'contrib.utils.extensions.IEHTMLElement',
+		function() {
 			init(true);
 			HTMLElement.extension_calibrate();
 		});
 	} else {
-		ScriptLoader.requireScript('utils.extensions.HTMLElement', init);
+		R.createNamespace('contrib.utils.extensions.HTMLElement');
+		init();
 	}
 })();

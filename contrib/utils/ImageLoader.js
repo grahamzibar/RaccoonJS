@@ -1,12 +1,14 @@
-R.require('utils.ImageLoader', 'utils.Timer', function() {
-	utils.ImageLoader = function ImageLoader(url) {
+R.require('contrib.utils.ImageLoader',
+'contrib.utils.Timer',
+function() {
+	contrib.utils.ImageLoader = function ImageLoader(url) {
 		var __self__ = this;
-		this.inheritFrom = events.EventDispatcher;
+		this.inheritFrom = contrib.events.EventDispatcher;
 		this.inheritFrom();
 		delete this.inheritFrom;
 		
 		var image = new Image();
-		var timer = new utils.Timer(100);
+		var timer = new contrib.utils.Timer(100);
 		timer.addEventListener('timer', function() {
 			if (image.width > 0 || image.height > 0) {
 				timer.stop();

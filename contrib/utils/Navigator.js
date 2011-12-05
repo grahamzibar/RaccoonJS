@@ -1,7 +1,9 @@
-R.require('utils.Navigator', 'utils.Browser', function() {
+R.require('contrib.utils.Navigator',
+'contrib.utils.Browser',
+function() {
 	utils.Navigator = new (function Navigator() {
  		var __self__ = this;
- 		var getUrl = utils.Browser.getUrl;
+ 		var getUrl = contrib.utils.Browser.getUrl;
  		var timer;
  		var lastUrl = '';
  		

@@ -1,14 +1,24 @@
 (function () {
-	var ePkg = contrib.events.EventDispatcher;
+	var events = contrib.events;
 	var serialNumber = 0;
 	var STATUS_KOSHER = "kosher";
 	var STATUS_CANCELLED = "taboo";
 	
-	ePkg.preventDefaults = function(e) {
+	events.preventDefaults = function(e) {
 		if (e.preventDefault) e.preventDefault();
 		if (e.stopPropagation) e.stopPropagation();
 	};
-	ePkg.Listener = function (eventName, FN, maxRuns) {
+	events.getWheelDelta = function(event) {
+		var delta = 0;
+		if (!event)
+			event = window.event;
+		if (event.wheelDelta)
+			delta = event.wheelDelta / 120;
+		else if (event.detail)
+			delta = -event.detail / 3;
+		return delta;
+	};
+	events.Listener = function (eventName, FN, maxRuns) {
 		var home = this;
 		var id = serialNumber++;
 		var executions = 0;
@@ -43,7 +53,7 @@
 			maxRuns = -1;
 		}
 	};
-	ePkg.EventDispatcher = function () {
+	events.EventDispatcher = function () {
 		var home = this;
 		var events = {};
 
@@ -54,13 +64,13 @@
 			events[eventName][listener.getID()] = listener;
 		};
 		this.addEventListener = function (eventName, FN) {
-			var listener = new ePkg.Listener(eventName, FN);
+			var listener = new contrib.events.Listener(eventName, FN);
 			home.queueListener(listener);
 			return listener;
 		};
 		this.removeEventListenerByAttributes = function (eventName, id) {
 			if (!events[eventName] || !events[eventName][id]) {
-				_openconsole.warn('Remove an event that is non-existent.', eventName, id);
+				console.warn('Remove an event that is non-existent.', eventName, id);
 				return;
 			}
 			delete events[eventName][id];

@@ -1,11 +1,20 @@
-if (!window.utils) {
-	utils = new Object();
-}
-R.require('utils.Animations', 'utils.Timer', 'utils.Browser', function () {
-	utils.Animations = new (function Animations() {
+R.require('contrib.utils.Animations',
+'contrib.utils.Browser',
+function () {
+	contrib.utils.Animations = new (function Animations() {
 		var __self__ = this;
+		
+		var events = contrib.events;
+		var utils = contrib.utils;
+		
 		this.DEFAULT_INTERVAL = utils.Browser.isIE ? 40 : 20; // 20 ms for each interval
 		this.DEFAULT_SPEED = 200; // 200 units per SECOND
+		
+		this.dispose = function() {
+			delete __self__;
+			delete events;
+			delete utils;
+		};
 		
 		this.splines = {
 			'linear': [0, 0, 1, 1],
@@ -75,11 +84,15 @@ R.require('utils.Animations', 'utils.Timer', 'utils.Browser', function () {
 								cubicBezierAtTime(timeProgress / timeDuration, cubics[0], cubics[1], cubics[2], cubics[3], 1) +
 								startVal);
 		};
+		
 		this.Tweener = function Tweener(options) {
 			var __home__ = this;
 			this.inheritFrom = events.EventDispatcher;
 			this.inheritFrom();
 			delete this.inheritFrom;
+			
+			var timer = false;
+			this.startTime = 0;
 			
 			this.init = function(options) {
 				var __this__ = __home__;
@@ -90,6 +103,7 @@ R.require('utils.Animations', 'utils.Timer', 'utils.Browser', function () {
 				__this__.duration = options.duration ?
 									options.duration :
 									Math.abs(options.to - options.from) / (__self__.DEFAULT_SPEED * (options.speed ? options.speed : 1));
+				__this__.interval = options.interval ? options.interval : __self__.DEFAULT_INTERVAL;
 				__this__.timingFunction = options.timingFunction ? options.timingFunction : 'ease';
 				if (options.oniterate) {
 					__this__.oniterate = options.oniterate;
@@ -101,10 +115,11 @@ R.require('utils.Animations', 'utils.Timer', 'utils.Browser', function () {
 					__this__.ignore = options.ignore;
 				}
 			};
-			var timer = new utils.Timer(options.interval ? options.interval : __self__.DEFAULT_INTERVAL);
-			timer.addEventListener('timer', function(e) {
+			
+			var listener = function() {
 				var __this__ = __home__;
-				__this__.progress = e.progress / 1000;
+				__this__.progress = ((new Date()).getTime() - __this__.startTime) / 1000;
+				
 				__this__.current = __self__.cubicBezier(__this__.from, __this__.to,
 													__this__.progress, __this__.duration, __self__.splines[__this__.timingFunction]);
 				if (__this__.oniterate) {
@@ -112,29 +127,42 @@ R.require('utils.Animations', 'utils.Timer', 'utils.Browser', function () {
 				}
 				__this__.dispatchEvent('iterate');
 				if (__this__.progress >= __this__.duration || (__this__.current >= __this__.to - 2 && __this__.current <= __this__.to + 2)) {
-					__this__.progress = __this__.duration;
-					__this__.current = __this__.to;
-					timer.stop();
-					timer.removeEventListener(e.listener);
-					timer = null;
-					__this__.dispatchEvent('complete');
-					if (__this__.oncomplete) {
-						__this__.oncomplete();
-					}
+					__this__.complete();
 				}
-				
 				__this__ = null;
-			});
+			};
+			this.complete = function() {
+				var __this__ = __home__;
+				__this__.progress = __this__.duration;
+				__this__.current = __this__.to;
+				
+				__this__.pause();
+					
+				__this__.dispatchEvent('complete');
+				if (__this__.oncomplete) {
+					__this__.oncomplete();
+				}
+				__this__ = null;
+			};
 			this.animate = function() {
-				if (__home__.ignore) {
+				var __this__ = __home__;
+				if (__this__.ignore) {
 					__this__.progress = __this__.duration;
 					__this__.current = __this__.to;
 				}
-				timer.start();
+				if (!timer) {
+					__this__.startTime = (new Date()).getTime();
+					timer = setInterval(listener, __this__.interval);
+				}
 			};
 			this.pause = function() {
-				timer.stop();
+				if (timer) {
+					clearInterval(timer);
+					timer = false;
+					__home__.startTime = 0;
+				}
 			};
+			
 			this.init(options);
 			options = null;
 		};

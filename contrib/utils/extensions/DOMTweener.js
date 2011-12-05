@@ -1,15 +1,31 @@
-R.require('utils.extensions.DOMTweener',
-'utils.Animations',
-'utils.extensions.HTMLElement',
+R.require('contrib.utils.extensions.DOMTweener',
+'contrib.utils.Animations',
+'contrib.utils.extensions.HTMLElement',
 function () {
-	utils.extensions.DOMTweemer = new (function DOMTweener() {
+	contrib.utils.extensions.DOMTweemer = new (function DOMTweener() {
 		var setup;
 		var iterate;
 		var complete;
-
+		
+		var defineProperties = function(el, property) {
+			obj = el.tweens[property];
+			obj.__defineGetter__('progress', function() {
+				obj.progress = (obj.startTime - (new Date()).getTime()) / 1000;
+				return obj.progress;
+			});
+			obj.__defineGetter__('current', function() {
+				if (obj.unit) {
+					return el.getStyleValue(property, obj.unit);
+				} else {
+					return Number(el.getStyle(property));
+				}
+			});
+		};
+		
+		var utils = contrib.utils;
+		
 		if (utils.Browser.isWebkit) {
-			setup = complete = function (obj, property) {
-				
+			var compileTransition = function(obj) {
 				var transition = '';
 				var counter = false;
 				var allTweens = obj.tweens;
@@ -27,6 +43,15 @@ function () {
 					counter = true;
 				}
 				obj.style.transition = obj.style.WebkitTransition = transition;
+			};
+		
+			setup = function (obj, property) {
+				obj.tweens[property].startTime = (new Date()).getTime();
+				compileTransition(obj);
+			};
+			
+			complete = function (obj, property) {
+				compileTransition(obj);
 			};
 
 			iterate = function () {
@@ -70,11 +95,22 @@ function () {
 				var tweenObj = this.tweens[property] = new utils.Animations.Tweener(options);
 
 				tweenObj.unit = options.unit ? options.unit : '';
+				
 				setup(__obj__, property);
+				
+				if (tweenObj.from == tweenObj.to) {
+					delete __obj__.tweens[property];
+					tweenObj = null;
+					complete(__obj__, property);
+					return null;
+				}
 
 				if (utils.Browser.isWebkit) {
+					//defineProperties(__obj__, property);
 					__obj__.addEventListener('webkitTransitionEnd', function anon() {
 						__obj__.removeEventListener('webkitTransitionEnd', anon, false);
+						delete __obj__.tweens[property];
+						tweenObj.complete();
 						tweenObj = null;
 						complete(__obj__, property);
 					}, false);
@@ -100,24 +136,31 @@ function () {
 						tweenObj = null;
 						complete(__obj__, property);
 					});
+					tweenObj.animate();
 				}
-
-				tweenObj.animate();
 				return tweenObj;
 			}
 			var tweenObj = this.tweens[property];
-			tweenObj.pause();
+			if (!utils.Browser.isWebkit) {
+				tweenObj.pause();
+			}
+			
 			tweenObj.init(options);
-
 			tweenObj.unit = options.unit ? options.unit : '';
 			setup(__obj__, property);
-
-			tweenObj.animate();
+			
+			if (!utils.Browser.isWebkit) {
+				//defineProperties(__obj__, property);
+				tweenObj.animate();
+			}
 			return tweenObj;
 		};
 
 		this.dispose = function () {
 			delete HTMLElement.prototype.tween;
+			delete setup;
+			delete iterate;
+			delete complete;
 		};
 	})();
 });

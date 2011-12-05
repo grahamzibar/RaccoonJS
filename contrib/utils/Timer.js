@@ -1,7 +1,9 @@
-R.require('utils.Timer', 'events.EventDispatcher', function() {
-	utils.Timer = function Timer(ms) {
+R.require('contrib.utils.Timer',
+'contrib.events.EventDispatcher',
+function() {
+	contrib.utils.Timer = function Timer(ms) {
 		var __self__ = this;
-		this.inheritFrom = events.EventDispatcher;
+		this.inheritFrom = contrib.events.EventDispatcher;
 		this.inheritFrom();
 		delete this.inheritFrom;
 		

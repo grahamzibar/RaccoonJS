@@ -1,15 +1,19 @@
 if (window.HTMLElement)
 	return;
 
-if (!window.utils) {
-	utils = new Object();
+if (!window.contrib) {
+	contrib = new Object();
 }
 
-if (!utils.extensions) {
-	utils.extensions = new Object();
+if (!contrib.utils) {
+	contrib.utils = new Object();
 }
 
-window.HTMLElement = utils.extensions.IEHTMLElement = new (function() {
+if (!contrib.utils.extensions) {
+	contrib.utils.extensions = new Object();
+}
+
+window.HTMLElement = contrib.utils.extensions.IEHTMLElement = new (function() {
 	var __self__ = this;
 	this.prototype = new Object();
 	
