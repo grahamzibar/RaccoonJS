@@ -1,5 +1,5 @@
 (function __elements__() {
-	var init = function init(mustCalibrate) {
+	var init = function init(isIE) {
 		contrib.utils.extensions.HTMLElement = new (function Elements() {
 			HTMLElement.prototype.getStyle = function getStyle(style) {
 				if (document.defaultView && document.defaultView.getComputedStyle) {
@@ -15,7 +15,7 @@
 			var getOpacity;
 			var setOpacity;
 
-			if (mustCalibrate) {
+			if (isIE === true) { // I don't want no object overriding this.
 				getOpacity = function (obj) {
 					obj = obj.getStyle('filter');
 					if (!obj) {
@@ -43,6 +43,8 @@
 					obj.style.opacity = val / 100;
 				};
 			}
+			isIE = null;
+			delete isIE;
 
 			HTMLElement.prototype.getStyleValue = function (style, unit) {
 				if (style == 'opacity') {
@@ -147,14 +149,27 @@
 	};
 
 	if (!window.HTMLElement) {
-		R.require('contrib.utils.extensions.HTMLElement',
-		'contrib.utils.extensions.IEHTMLElement',
-		function() {
+		if (navigator.appName == 'Microsoft Internet Explorer' && (new RegExp("MSIE ([0-9]{1,}[\.0-9]{0,})")).exec(navigator.userAgent) && parseFloat(RegExp.$1) < 8) {
+			R.require('contrib.utils.extensions.HTMLElement',
+			'contrib.utils.extensions.IEHTMLElement',
+			function() {
+				if (window.EPE) {
+					EPE.__R1 = document.documentElement.childNodes[1].onload;
+					document.documentElement.childNodes[1].onload = EPE.init;
+				} else {
+					window.location.replace(window.location.href); // Hack
+				}
+				init(true);
+			});
+		} else if (window.Element) {
+			window.HTMLElement = window.Element;
+			R.registerNamespace('contrib.utils.extensions.HTMLElement');
 			init(true);
-			HTMLElement.extension_calibrate();
-		});
+		}
+		// Otherwise, we do nothing.  Unsupported and probably never will be.
+		console.error('Unsupported JavaScript Environment.  We require HTMLElement or Element for this extension.');
 	} else {
-		R.createNamespace('contrib.utils.extensions.HTMLElement');
+		R.registerNamespace('contrib.utils.extensions.HTMLElement');
 		init();
 	}
 })();

@@ -150,7 +150,6 @@ function () {
 			setup(__obj__, property);
 			
 			if (!utils.Browser.isWebkit) {
-				//defineProperties(__obj__, property);
 				tweenObj.animate();
 			}
 			return tweenObj;

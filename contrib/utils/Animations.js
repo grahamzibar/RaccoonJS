@@ -10,12 +10,6 @@ function () {
 		this.DEFAULT_INTERVAL = utils.Browser.isIE ? 40 : 20; // 20 ms for each interval
 		this.DEFAULT_SPEED = 200; // 200 units per SECOND
 		
-		this.dispose = function() {
-			delete __self__;
-			delete events;
-			delete utils;
-		};
-		
 		this.splines = {
 			'linear': [0, 0, 1, 1],
 			'ease': [0.25, 0.1, 0.25, 1],
@@ -84,7 +78,7 @@ function () {
 								cubicBezierAtTime(timeProgress / timeDuration, cubics[0], cubics[1], cubics[2], cubics[3], 1) +
 								startVal);
 		};
-		
+		/* Move to 'Animations' folder?  There we can store Cubic Bezier and Workers if we can use them :) */
 		this.Tweener = function Tweener(options) {
 			var __home__ = this;
 			this.inheritFrom = events.EventDispatcher;
@@ -116,7 +110,7 @@ function () {
 				}
 			};
 			
-			var listener = function() {
+			this.iterate = function() {
 				var __this__ = __home__;
 				__this__.progress = ((new Date()).getTime() - __this__.startTime) / 1000;
 				
@@ -126,6 +120,11 @@ function () {
 					__this__.oniterate();
 				}
 				__this__.dispatchEvent('iterate');
+				__this__ = null;
+			};
+			var listener = function() {
+				var __this__ = __home__;
+				__this__.iterate();
 				if (__this__.progress >= __this__.duration || (__this__.current >= __this__.to - 2 && __this__.current <= __this__.to + 2)) {
 					__this__.complete();
 				}
@@ -136,8 +135,13 @@ function () {
 				__this__.progress = __this__.duration;
 				__this__.current = __this__.to;
 				
+				if (__this__.oniterate) {
+					__this__.oniterate();
+				}
+				__this__.dispatchEvent('iterate');
+				
 				__this__.pause();
-					
+				
 				__this__.dispatchEvent('complete');
 				if (__this__.oncomplete) {
 					__this__.oncomplete();
@@ -165,6 +169,12 @@ function () {
 			
 			this.init(options);
 			options = null;
+		};
+		
+		this.dispose = function() {
+			delete __self__;
+			delete events;
+			delete utils;
 		};
 	})();
 });
