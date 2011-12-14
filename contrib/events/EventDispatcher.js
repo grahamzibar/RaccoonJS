@@ -1,3 +1,11 @@
+if (!window.contrib) {
+	contrib = new Object();
+}
+
+if (!contrib.events) {
+	contrib.events = new Object();
+}
+
 (function () {
 	var events = contrib.events;
 	var serialNumber = 0;

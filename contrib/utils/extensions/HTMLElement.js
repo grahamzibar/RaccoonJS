@@ -1,3 +1,15 @@
+if (!window.contrib) {
+	contrib = new Object();
+}
+
+if (!contrib.utils) {
+	contrib.utils = new Object();
+}
+
+if (!contrib.utils.extensions) {
+	contrib.utils.extensions = new Object();
+}
+
 (function __elements__() {
 	var init = function init(isIE) {
 		contrib.utils.extensions.HTMLElement = new (function Elements() {

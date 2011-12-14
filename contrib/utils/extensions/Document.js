@@ -1,3 +1,15 @@
+if (!window.contrib) {
+	contrib = new Object();
+}
+
+if (!contrib.utils) {
+	contrib.utils = new Object();
+}
+
+if (!contrib.utils.extensions) {
+	contrib.utils.extensions = new Object();
+}
+
 contrib.utils.extensions.Document = new (function() {
 	document.getMouseXY = function(e) {
 		var posX = 0;

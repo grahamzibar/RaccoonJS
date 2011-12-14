@@ -1,4 +1,10 @@
-R.createNamespace('contrib.utils.Browser');
+if (!window.contrib) {
+	contrib = new Object();
+}
+
+if (!contrib.utils) {
+	contrib.utils = new Object();
+}
 
 contrib.utils.Browser = new (function Browser() {
 	var __self__ = this;

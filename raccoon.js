@@ -55,9 +55,12 @@
 	
 	var settings = R.settings = new (function Settings(R, fileMatches, namespaces, config) {
 		var __self__ = this;
-		var pathSet = false;
-		var version = '1.2';
+		var version = '1.4';
 		var devMode = true;
+		
+		var debug;
+		var assert;
+		var trace;
 		
 		this.version = function() {
 			return version;
@@ -69,9 +72,19 @@
 			return bool;
 		};
 		this.devMode = function(setToDev) {
-			if (!setToDev && setToDev != false)
+			if (!setToDev && setToDev !== false)
 				return devMode;
 			devMode = setToDev;
+			if (!setToDev) {
+				debug = console.debug;
+				trace = console.trace;
+				assert = console.assert;
+				console.debug = console.trace = console.assert = function() {};
+			} else if (debug && assert && trace) {
+				console.debug = debug;
+				console.trace = trace;
+				console.assert = assert;
+			}
 			return setToDev;
 		};
 		this.extension = function(setExt) {
@@ -86,15 +99,11 @@
 			delimiter = setDelim;
 			return setDelim;
 		};
-		this.defaultPath = this.setDefaultPath = function(path, force) {
+		this.defaultPath = this.setDefaultPath = function(path) {
 			if (!path) {
 				return defaultPath;
 			}
-			if (pathSet && !force)
-				return;
-			pathSet = true;
 			defaultPath = path;
-			console.debug('Raccoon wants to snoop in', defaultPath);
 		};
 		this.addPath = function(name, uri) {
 			fileMatches[name] = uri;
@@ -116,15 +125,17 @@
 				return b.levels - a.levels;
 			});
 		};
-		this.addConfig = function(libraryName, file) {
-			config[libraryName] = file;
-			if (file.path) {
-				__self__.addNamespace(libraryName, file.path);
-			}
-			var scripts = file.scripts;
-			for (var name in scripts) {
-				if (scripts[name].path) {
-					__self__.addPath(name, scripts[name].path);
+		this.dependencyMap = function(map) {
+			for (var libraryName in map) {
+				var file = config[libraryName] = map[libraryName];
+				if (file.path) {
+					__self__.addNamespace(libraryName, file.path);
+				}
+				var scripts = file.scripts;
+				for (var name in scripts) {
+					if (scripts[name].path) {
+						__self__.addPath(name, scripts[name].path);
+					}
 				}
 			}
 		};
@@ -324,9 +335,7 @@
 		};
 	} else {
 		console = R.Console = window.console;
-		if (!settings.devMode()) {
-			console.debug = console.trace = console.assert = function() {};
-		} else if (!console.debug) {
+		if (!console.debug) {
 			console.debug = console.log;
 		}
 	}
@@ -355,15 +364,21 @@
 		R.getPackages = function() {
 			return copyObject(packages);
 		};
+		var convertToPath = function(name) {
+			return name.replace(new RegExp('\\' + delimiter, 'g'), '/') + extension;
+		};
 		var convertToUrl = function (name) {
 			if (paths[name]) {
 				return paths[name];
 			}
 			var size = namespaces.length;
 			for (var i = 0; i < size; i++) {
-				
+				var space = namespaces[i];
+				if (space.rule.test(name)) {
+					return space.path + convertToPath(name);
+				}
 			}
-			return defaultPath + (name.replace(new RegExp('\\' + delimiter, 'g'), '/') + extension);
+			return defaultPath + convertToPath(name);
 		};
 		var isName = function(str) {
 			return str.indexOf('/') == -1;
@@ -387,10 +402,7 @@
 						break;
 					}
 				}
-				if (allReady) {
-					return;
-				}
-				newScript.onready();
+				if (!allReady) newScript.onready();
 			} else if (!newScript.dependencies.length) {
 				newScript.onready();
 			} else {
@@ -401,9 +413,7 @@
 						break;
 					}
 				}
-				if (ready) {
-					newScript.onready();
-				}
+				if (ready) newScript.onready();
 			}
 		};
 		var syncImport = function(script) {
@@ -418,11 +428,13 @@
 			newScript.src = script.url;
 			newScript.onload = function () {
 				if (script.onload()) {
+					console.debug('"onload":', script.name, 'has downloaded and parsed');
 					newScript.parentNode.removeChild(newScript);
 				}
 			};
 			newScript.onreadystatechange = function () {
 				if ((this.readyState == 'complete' || this.readyState == 'loaded') && script.onload()) {
+					console.debug('"onreadystatechange":', script.name, 'has downloaded and parsed');
 					newScript.parentNode.removeChild(newScript);
 				}
 			};
@@ -496,6 +508,7 @@
 					return false;
 				}
 				__self__.loaded = true;
+				console.info(__self__.name, 'is included', __self__.ready ? 'and telling its dependents to download' : __self__.dependencies.length ? 'and requesting its dependencies' : 'and will tell its dependents it is included');
 				var callbacks = __self__.callbacks;
 				var size = callbacks.length;
 				for (var i = 0; i < size; i++) {
@@ -506,10 +519,13 @@
 			};
 			this.waitingScripts = new Array();
 			this.onready = function () {
+				if (__self__.ready && !__self__.loaded) {
+					return;
+				}
 				var dependencies = __self__.dependencies;
 				var size = dependencies.length;
 				for (var i = 0; i < size; i++) {
-					if (!dependencies[i].ready)
+					if (!dependencies[i].ready || !dependencies[i].loaded)
 						return;
 				}
 				var waitingScripts = __self__.waitingScripts;
@@ -519,13 +535,16 @@
 						scriptMe();
 				}
 				__self__.ready = true;
+				if (!__self__.loaded) {
+					return;
+				}
 				if (url == thread) {
 					var index = threads.indexOf(__self__);
 					if (index == -1) {
 						throw 'Top level thread is not accessible';
 						return;
 					}
-					console.info('Thread #' + (index + 1), 'ate', '[' + __self__.dependencies.join(', ') + ']', 'and digested');
+					console.info('Thread #' + (index + 1), 'ate', '[' + __self__.dependencies.join(', ') + ']', 'and enjoyed it :)');
 					//threads.removeAt(index);
 					return;
 				}
@@ -539,20 +558,27 @@
 					var executeDependent = true;
 					var length = sibs.length;
 					for (var j = 0; j < length; j++) {
-						if (url != sibs[j].url) {
-							if (!sibs[j].ready) { // Review -  This checks itself... need to change that.
-								executeDependent = false;
-								break;
-							}
+						if (url != sibs[j].url && !sibs[j].ready) {
+							executeDependent = false;
+							break;
 						}
 					}
 					if (executeDependent) {
-						dependents[i].onready();
+						if (__self__.loaded) {
+							console.debug(__self__.name, 'is telling', dependents[i].name, 'to do its thing');
+							dependents[i].onready();
+						} else {
+							/* TODO: Move the following to require (or tracker?) and NOT callback */
+							console.debug(__self__.name, 'must finish downloading before telling', dependents[i].name, 'to do its thing');
+							__self__.callbacks[__self__.callbacks.length] = dependents[i].onready; // ?? -- This waits until the script is downloaded :)
+						}
 					}
 				}
 			};
 			this.unloadScript;
 			this.unload = function (dependentScript) {
+				console.info(dependentScript, 'no longer requires', __self__.name);
+				dependentScript.removeDependency(__self__);
 				var dependents = __self__.dependents;
 				if (dependentScript != thread) {
 					var tempScript = library[dependenScript];
@@ -562,7 +588,7 @@
 					dependentScript = dependents.shift();
 					dependentCache = {};
 				if (__self__.name && dependents.length == 0) {
-					dependentScript.removeDependency(__self__);
+					console.info(__self__.name, 'is not required by anyone else so it will be removed');
 					var package = __self__.name.split(delimiter);
 					for (var i = 0; i < package.length; i++) {
 						var reference = window;
@@ -596,7 +622,7 @@
 						dependencies.unload(__self__);
 					}
 				} else {
-					console.warn('Cannot remove', __self__.name, 'as other libraries rely on it');
+					console.info(__self__.name, 'won\'t be removed as other libraries still require it');
 				}
 			};
 			this.toString = function() {
@@ -645,6 +671,10 @@
 			}
 			return namespace;
 		};
+		/* TODO: We need a parameter or something that DOES NOT use callback
+			for Raccoon's requirement behaviour as it's slightly separate from
+			callback...
+		 */
 		R.include = function(name, callback) {
 			if (!callback) {
 				callback = function() { };
@@ -663,7 +693,7 @@
 					if (script.loaded) {
 						callback({ 'scriptName': name, 'url': url });
 					} else {
-						script.callbacks[0] = callback;
+						script.callbacks[0] = callback; // TODO: .callbacks[0] to .require? Only for requirements
 					}
 					return script;
 				}
@@ -676,11 +706,12 @@
 					if (script.loaded) {
 						callback({ 'scriptName': name, 'url': url });
 					} else {
-						script.callbacks[script.callbacks.length] = callback;
+						script.callbacks[0] = callback; // TODO: .callbacks[0] to .require? Only for requirements
 					}
 					return script;
 				}
 			}
+			console.info('Including', script.name);
 			script.requested = true;
 			script.callbacks[script.callbacks.length] = callback;
 			if (settings.async()) {
@@ -696,21 +727,18 @@
 				requiredName = requiredUrl;
 				requiredUrl = convertToUrl(requiredUrl);
 			}
-			console.debug(requiredUrl, 'is becoming a beautiful script');
+			
 			var newScript = library[requiredUrl] ? library[requiredUrl] : new ScriptNode(requiredUrl, requiredName);
-			console.debug(listeningScript.name, 'is getting to know', newScript.name);
 			listeningScript.addDependency(newScript);
 			newScript.addDependent(listeningScript);
-			console.debug(listeningScript.name, '<3\'s', newScript.name);
-			var space = name.split(delimiter)[0];
-			if (!config[space] || !config[space].scripts[name] || !config[space].scripts[name].dependencies || config[space].scripts[name].dependencies.length == 0) {
-				includeRequirement(newScript);
+			
+			var space = requiredName.split(delimiter)[0];
+			if (config[space] && config[space].scripts[requiredName] && config[space].scripts[requiredName].dependencies && config[space].scripts[requiredName].dependencies.length > 0) {
+				R.require.apply(R.require, [newScript.name].concat(config[space].scripts[requiredName].dependencies, [function() {
+					includeRequirement(newScript);
+				}]));
 			} else {
-				var deps = config[space].scripts[name].dependencies;
-				var max = deps.length;
-				for (var i = 0; i < max; i++) {
-					nodeSetup(newScript, deps[i]);
-				}
+				includeRequirement(newScript);
 			}
 		};
 		var requireScripts = function(hasName, args) {
@@ -757,4 +785,5 @@
 		console.info('ScriptLoader is scripting');
 	})(R, settings, console, fileMatches, namespaces, config, R.MAIN_THREAD);
 	console.info('RaccoonJS is alive!');
+	console.info('***');
 })();

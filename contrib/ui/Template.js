@@ -1,7 +1,12 @@
-if (!window.ui) {
-	ui = new Object();
+if (!window.contrib) {
+	contrib = new Object();
 }
-ui.Template = function Template(markup, delim) {
+
+if (!contrib.ui) {
+	contrib.ui = new Object();
+}
+
+contrib.ui.Template = function Template(markup, delim) {
 	if (typeof markup == 'object') {
 		markup = markup.innerHTML;
 	}
