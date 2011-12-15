@@ -13,13 +13,13 @@
 	R.settings.extension('.js'); // If set to '.min.js' we can load contrib.utils.Timer as /some_path_to_js/contrib/utils/Timer.min.js
 	R.settings.defaultPath(''); // Default is relative.  Non-relative example: '/path_to_js/ (all paths must end with a trailing slash)
 	
-	// Dependency Map
+	// Dependency Map -- optional
 	R.settings.dependencyMap({
 		contrib : {
-			path: '/js/',
+			//path: '/example/path/to/library',
 			scripts: {
 				'contrib.events.Mouse': {
-					//path: '/other_directory/js/',
+					//path: '/other_directory/to/specific/file',
 					dependencies: ['contrib.events.EventDispatcher']
 				},
 				'contrib.apps.ScreenSize': {
