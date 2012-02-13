@@ -10,9 +10,51 @@ if (!contrib.utils.extensions) {
 	contrib.utils.extensions = new Object();
 }
 
+/*
+TODO:
+getElementsByClassName (for IE 8 and below)
+
+some querying with xpath/native calls would be nice... might make great for another extension!
+*/
+
 (function __elements__() {
 	var init = function init(isIE) {
 		contrib.utils.extensions.HTMLElement = new (function Elements() {
+			HTMLElement.prototype.addClass = function(className) {
+				if (this.className.length == 0) {
+					this.className = className;
+					return;
+				}
+			
+				var classes = this.className.split(' ');
+				var size = classes.length;
+				
+				for (var i = 0; i < size; i++) {
+					if (className == classes[i]) {
+						return;
+					}
+				}
+				
+				this.className += ' ' + className;
+			};
+			
+			HTMLElement.prototype.removeClass = function(className) {
+				var classes = this.className.split(' ');
+				
+				if (classes.length == 0) {
+					return;
+				}
+				
+				for (var i = 0; i < classes.length; i++) {
+					if (className == classes[i]) {
+						classes.splice(i, 1);
+						i--;
+					}
+				}
+				
+				this.className = classes.join(' ');
+			};
+			
 			HTMLElement.prototype.getStyle = function getStyle(style) {
 				if (document.defaultView && document.defaultView.getComputedStyle) {
 					return document.defaultView.getComputedStyle(this, false).getPropertyValue(style);
@@ -30,7 +72,7 @@ if (!contrib.utils.extensions) {
 			if (isIE === true) { // I don't want no object overriding this.
 				getOpacity = function (obj) {
 					obj = obj.getStyle('filter');
-					if (!obj) {
+					if (!obj || obj.toLowerCase() == 'none') {
 						return 100;
 					} else {
 						var value = obj.toLowerCase().split('alpha(opacity=')[1].split(')')[0]; // Setting value to separate value helps IE do this for some weird reason...
@@ -106,7 +148,7 @@ if (!contrib.utils.extensions) {
 				}
 			};
 
-			HTMLElement.prototype.search = function search(tagName, attr, query) {
+			HTMLElement.prototype.query = function search(tagName, attr, query) {
 				tagName = this.getElementsByTagName(tagName);
 				var obj = new Array();
 				for (var i in tagName) {
@@ -117,6 +159,13 @@ if (!contrib.utils.extensions) {
 				}
 				return obj;
 			};
+			
+			if (!HTMLElement.prototype.getElementsByClassName) {
+				HTMLElement.prototype.getElementsByClassName = function() {
+					// We want to implement this... we also want to use things
+					// like xpath and Array.filter if possible :)
+				};
+			}
 
 			HTMLElement.prototype.getXY = function getXY() {
 				var curX = 0;
@@ -177,9 +226,10 @@ if (!contrib.utils.extensions) {
 			window.HTMLElement = window.Element;
 			R.registerNamespace('contrib.utils.extensions.HTMLElement');
 			init(true);
+		} else {
+			// Otherwise, we do nothing.  Unsupported and probably never will be.
+			console.error('Unsupported JavaScript Environment.  We require HTMLElement or Element for this extension.');
 		}
-		// Otherwise, we do nothing.  Unsupported and probably never will be.
-		console.error('Unsupported JavaScript Environment.  We require HTMLElement or Element for this extension.');
 	} else {
 		R.registerNamespace('contrib.utils.extensions.HTMLElement');
 		init();

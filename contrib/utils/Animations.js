@@ -100,7 +100,7 @@ contrib.utils.Animations = new (function Animations() {
 			__this__.current = options.from;
 			__this__.progress = 0;
 			__this__.duration = options.duration ?
-								options.duration :
+								Math.max(0.01, options.duration) :
 								Math.abs(options.to - options.from) / (__self__.DEFAULT_SPEED * (options.speed ? options.speed : 1));
 			__this__.interval = options.interval ? options.interval : __self__.DEFAULT_INTERVAL;
 			__this__.timingFunction = options.timingFunction ? options.timingFunction : 'ease';
@@ -110,6 +110,7 @@ contrib.utils.Animations = new (function Animations() {
 			if (options.oncomplete) {
 				__this__.oncomplete = options.oncomplete;
 			}
+			// Skip the animation and render the final result
 			if (options.ignore) {
 				__this__.ignore = options.ignore;
 			}

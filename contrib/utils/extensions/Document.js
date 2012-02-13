@@ -32,6 +32,14 @@ contrib.utils.extensions.Document = new (function() {
 				posX = e.targetTouches.pageX;
 				posY = e.targetTouches.pageY;
 			}
+		} else if (e.touches) {
+			if (e.touches.length > 0) {
+				posX = e.touches[0].pageX;
+				posY = e.touches[0].pageY;
+			} else {
+				posX = e.touches.pageX;
+				posY = e.touches.pageY;
+			}
 		} else {
 			alert("Your browser does not support obtaining cursor coordinates...\nPlease update your browser.\nK THNX BAI LOLZ!!!1!!ONE!");
 		}

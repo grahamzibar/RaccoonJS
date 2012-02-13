@@ -20,17 +20,12 @@ contrib.ui.ScrollPane = function(container, axis, scrollBarObj) {
 	
 	var mask = container.parentNode;
 	var cache = new Object();
-	var disabled;
-	var lastMousePos;
-	var lastStamp;
-	var scrolling;
+	var disabled = false;
+	var lastMousePos = 0;
+	var lastStamp = 0;
+	var scrolling = false;
 	
 	var start = this.restart = function() {
-		disabled = false;
-		lastMousePos = 0;
-		lastStamp = 0;
-		scrolling = false;
-		
 		if (!axis || axis == 'x') {
 			axis = {
 				'dimension': 'offsetWidth',
@@ -96,11 +91,22 @@ contrib.ui.ScrollPane = function(container, axis, scrollBarObj) {
 		}
 	};
 	
+	var getElPosition = function(el) {
+		return el.getXY()[axis.pos] - cache.maskPos;
+	};
+	
+	var checkCalibration = function() {
+		if (cache.contentSize = container[axis.dimension] || cache.maskPos != mask.getXY()[axis.pos] || cache.maskSize != mask[axis.dimension]) {
+			__self__.calibrate();
+		}
+	};
+	
 	var check = function(snap) {
 		if (scrolling) {
 			return;
 		}
-		var diff = cache.maskSize - cache.contentSize;
+		var increment = cache.maskSize;
+		var diff = increment - cache.contentSize;
 		var currentPos = cache.contentPos;
 		if (diff > 0 || currentPos > 0) {
 			if (snap) {
@@ -111,7 +117,7 @@ contrib.ui.ScrollPane = function(container, axis, scrollBarObj) {
 			}
 		} else if (currentPos < diff) {
 			if (snap) {
-				cache.contentPos = diff;
+				cache.contentPos = Math.round(diff);
 				container.style[axis.offset] = diff + 'px';
 			} else {
 				__self__.scrollTo(-diff);
@@ -128,7 +134,7 @@ contrib.ui.ScrollPane = function(container, axis, scrollBarObj) {
 		if (cache.contentPos > 0 || cache.contentPos < diff) {
 			val *= 0.75;
 		}
-		var contentPos = cache.contentPos = cache.contentPos - val;
+		var contentPos = cache.contentPos = Math.round(cache.contentPos - val);
 		/*var maxOffset = cache.maskSize * 0.4;
 		if (contentPos > maxOffset) {
 			contentPos = cache.contentPos = maxOffset;
@@ -155,7 +161,7 @@ contrib.ui.ScrollPane = function(container, axis, scrollBarObj) {
 			return;
 		}
 		val *= -1;
-		var contentPos = cache.contentPos = val;
+		var contentPos = cache.contentPos = Math.round(val);
 		var diff = cache.maskSize - cache.contentSize;
 		container.tween(axis.offset, { 'to': contentPos, 'unit': 'px', 'duration': SCROLL_SPEED, 'timingFunction': 'ease-out',
 			'oncomplete': function() {
@@ -167,11 +173,9 @@ contrib.ui.ScrollPane = function(container, axis, scrollBarObj) {
 	};
 	
 	this.scrollToEl = function(el) {
-		var coord = el.getXY()[axis.pos] - cache.maskPos;
-		if (coord < 0) {
+		var coord = getElPosition(el);
+		if (coord) {
 			__self__.scrollBy(coord);
-		} else if (coord + el[axis.dimension] > cache.maskSize) {
-			__self__.scrollBy(coord + el[axis.dimension] + cache.contentPos - cache.maskSize);
 		}
 	};
 
@@ -219,6 +223,7 @@ contrib.ui.ScrollPane = function(container, axis, scrollBarObj) {
 		scrolling = true;
 		lastMousePos = document.getMouseXY(e)[axis.pos];
 		lastStamp = (new Date()).getTime();
+		// perhaps, if we have swipe-only mode, we ignore this move event
 		container.addEventListener('touchmove', mouseMove, false);
 		events.preventDefaults(e);
 	};
@@ -230,6 +235,8 @@ contrib.ui.ScrollPane = function(container, axis, scrollBarObj) {
 	
 	var touchUp = function(e) {
 		scrolling = false;
+		// Then, if we have swipe-only, we need not to remove this event listener
+		// and we should pass e to mouseMove...
 		container.removeEventListener('touchmove', mouseMove, false);
 		mouseMove(false);
 	};
@@ -244,6 +251,7 @@ contrib.ui.ScrollPane = function(container, axis, scrollBarObj) {
 	
 	if (scrollBarObj) {
 		if (scrollBarObj.alwaysVisible === false) {
+			// revisit this code laterr
 			/*var mouseover = false;
 			var requested = false;
 			
@@ -344,6 +352,7 @@ contrib.ui.ScrollPane = function(container, axis, scrollBarObj) {
 	}
 	
 	this.setupListeners = function() {
+		// TODO: Review mouse wheel code TODO!!
 		container.addEventListener('touchstart', touchDown, false);
 		container.addEventListener('touchend', touchUp, false);
 		container.addEventListener('mousewheel', scrollWheel, false);

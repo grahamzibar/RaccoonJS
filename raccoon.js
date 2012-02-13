@@ -55,7 +55,7 @@
 	
 	var settings = R.settings = new (function Settings(R, fileMatches, namespaces, config) {
 		var __self__ = this;
-		var version = '1.4';
+		var version = '1.6 Alpha';
 		var devMode = true;
 		
 		var debug;
@@ -755,7 +755,7 @@
 				listeningScript = library[url];
 			} else {
 				listeningScript = threads[threads.length] = new ScriptNode(url, name);
-				listeningScript.requested = listeningScript.loaded = true;
+				listeningScript.requested = true;
 			}
 			var size = args.length - 1;
 			if (typeof args[size - 1] == 'function') {

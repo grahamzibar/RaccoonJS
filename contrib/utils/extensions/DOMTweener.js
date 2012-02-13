@@ -15,6 +15,7 @@ contrib.utils.extensions.DOMTweemer = new (function DOMTweener() {
 	var iterate;
 	var complete;
 	
+	// Review possible memory leak here.
 	var defineProperties = function(el, property) {
 		obj = el.tweens[property];
 		obj.__defineGetter__('progress', function() {
@@ -28,6 +29,18 @@ contrib.utils.extensions.DOMTweemer = new (function DOMTweener() {
 				return Number(el.getStyle(property));
 			}
 		});
+		
+		obj.animate = function() {
+			// Do nothing
+		};
+		
+		obj.pause = function(skipRender) {
+			obj.startTime = 0;
+			if (!skipRender) {
+				delete el.tweens[property];
+				setup(el, property);
+			}
+		};
 	};
 	
 	var utils = contrib.utils;
@@ -88,8 +101,11 @@ contrib.utils.extensions.DOMTweemer = new (function DOMTweener() {
 		if (!this.tweens) {
 			this.tweens = new Object();
 		}
+		
+		var tweenObj = this.tweens[property];
 
-		options.from = this.getStyleValue(property, options.unit);
+		// ** if tween exists, should I not just ask for current?
+		options.from = tweenObj ? tweenObj.current : this.getStyleValue(property, options.unit);
 		
 		if (!options.from && options.from != 0) {
 			if (this[property]) {
@@ -99,8 +115,8 @@ contrib.utils.extensions.DOMTweemer = new (function DOMTweener() {
 			}
 		}
 		
-		if (!this.tweens[property]) {
-			var tweenObj = this.tweens[property] = new utils.Animations.Tweener(options);
+		if (!tweenObj) {
+			tweenObj = this.tweens[property] = new utils.Animations.Tweener(options);
 
 			tweenObj.unit = options.unit ? options.unit : '';
 			
@@ -148,18 +164,21 @@ contrib.utils.extensions.DOMTweemer = new (function DOMTweener() {
 			}
 			return tweenObj;
 		}
-		var tweenObj = this.tweens[property];
-		if (!utils.Browser.isWebkit) {
-			tweenObj.pause();
-		}
+		
+		tweenObj.pause(true);
 		
 		tweenObj.init(options);
 		tweenObj.unit = options.unit ? options.unit : '';
-		setup(__obj__, property);
 		
-		if (!utils.Browser.isWebkit) {
-			tweenObj.animate();
+		if (utils.Browser.isWebkit && options.duration == tweenObj.duration &&
+			options.timingFunction == tweenObj.timingFunction &&
+			options.unit == tweenObj.unit) {
+			obj.setStyle(property, options.to + options.unit);
+		} else {
+			setup(__obj__, property);
 		}
+		tweenObj.animate();
+		
 		return tweenObj;
 	};
 
