@@ -15,7 +15,7 @@ var convertEvent = function (e) {
 
 var onmousedown = function (e) {
 	e = convertEvent(e);
-	if (e.target.mouse_noTouch && e.type == 'touchstart') {
+	if (!e.target || (e.target.mouse_noTouch && e.type == 'touchstart')) {
 		return;
 	}
 	var bool = DocumentDispatch.dispatchEvent(e.target.mouse_serial + 'onmousedown', e);

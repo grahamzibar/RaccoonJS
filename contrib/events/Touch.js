@@ -8,8 +8,11 @@ function() {
 		delete this.inheritFrom;
 		
 		var __self__ = this;
+		var enabled = false;
+		var started = false;
 		var moving = false;
 		var touchType;
+		var moveCount = 0;
 		var lastPos;
 		
 		var getPos = function(touches) {
@@ -17,19 +20,26 @@ function() {
 			if (size > 0) {
 				var rry = new Array();
 				for (var i = 0; i < size; i++) {
-					rry[i] = { x: touches[i].pageX, y: touches[i].pageX };
+					rry[i] = { x: touches[i].pageX, y: touches[i].pageY };
 				}
-			} else {
-				return [{ x: touches.pageX, y: touches.pageX }];
+				return rry;
 			}
+			return [{ x: touches.pageX, y: touches.pageX }];
 		};
 		
 		var touchStart = function(e) {
 			e.preventDefault();
+			if (started) {
+				return;
+			}
+			started = true;
 			lastPos = getPos(e.touches);
+			element.addEventListener('touchmove', touchMove);
+			__self__.dispatchEvent(Touch.TOUCH_START, { touchEvent: e, coord: lastPos });
 		};
 		
 		var processEvent = function(e, coord) {
+			e.preventDefault();
 			var translation = true;
 			if (touchType == Touch.TOUCH_X) {
 				__self__.dispatchEvent(Touch.TOUCH_X, { touchEvent: e, delta: coord[0].x - lastPos[0].x });
@@ -76,15 +86,18 @@ function() {
 					touchType = Touch.TOUCH_Y;
 				} else {
 					var slope = Math.round(Math.abs(deltaY) / Math.abs(deltaX) * 10);
-					if (slope < 5) {
+					if (slope < 4) {
 						touchType = Touch.TOUCH_X;
-					} else if (slope > 5) {
+					} else if (slope > 4) {
 						touchType = Touch.TOUCH_Y;
 					} else {
 						touchType = Touch.TOUCH_XY;
 					}
 				}
-				
+			}
+			var modulo = moveCount++ % e.touches.length;
+			if (modulo != 0) {
+				return;
 			}
 			processEvent(e, newPos);
 			lastPos = newPos;
@@ -92,17 +105,37 @@ function() {
 		
 		var touchEnd = function(e) {
 			e.preventDefault();
+			if (!e.touches || !e.touches.length) {
+				element.removeEventListener('touchmove', touchMove);
+				started = false;
+				moving = false;
+				moveCount = 0;
+				__self__.dispatchEvent(Touch.TOUCH_END, { touchEvent: e, coord: lastPos });
+			}
 		};
-		
-		element.addEventListener('touchstart', touchStart);
-		element.addEventListener('touchmove', touchMove);
-		element.addEventListener('touchend', touchEnd);
 		
 		this.dispose = function() {
-			element.removeEventListener('touchstart', touchStart);
-			element.removeEventListener('touchmove', touchMove);
-			element.removeEventListener('touchend', touchEnd);
+			if (enabled) {
+				enabled = false;
+				element.removeEventListener('touchstart', touchStart);
+				if (moving) {
+					element.removeEventListener('touchmove', touchMove);
+					moving = false;
+				}
+				element.removeEventListener('touchend', touchEnd);
+			}
 		};
+		
+		this.enable = function() {
+			if (enabled) {
+				return;
+			}
+			enabled = true;
+			element.addEventListener('touchstart', touchStart);
+			element.addEventListener('touchend', touchEnd);
+		};
+		
+		this.enable();
 	};
 	
 	// Some static garabage collection that works with Raccoon.
@@ -118,6 +151,8 @@ function() {
 	Touch.TOUCH_Y = 'touchy';
 	Touch.TOUCH_XY = 'touchxy';
 	Touch.TOUCH_ALL = 'touchall';
+	Touch.TOUCH_START = 'touchstart';
+	Touch.TOUCH_END = 'touchend';
 	
 	/** TODO: Implement
 	Touch.TOUCH_ROTATE = 'touchrotate';

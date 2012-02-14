@@ -26,7 +26,7 @@
 					dependencies: ['contrib.utils.extensions.HTMLElement', 'contrib.utils.extensions.Document']
 				},
 				'contrib.ui.ScrollPane': {
-					dependencies: ['contrib.events.Mouse', 'contrib.utils.extensions.Document', 'contrib.utils.extensions.DOMTweener']
+					dependencies: ['contrib.events.Mouse', 'contrib.utils.extensions.Document', 'contrib.utils.extensions.DOMTweener', 'contrib.events.Touch']
 				},
 				'contrib.utils.ImageLoader': {
 					dependencies: ['contrib.utils.Timer']
@@ -36,9 +36,6 @@
 				},
 				'contrib.utils.Timer': {
 					dependencies: ['contrib.events.EventDispatcher']
-				},
-				'contrib.utils.Navigator': {
-					dependencies: ['contrib.utils.Browser']
 				},
 				'contrib.utils.extensions.DOMTweener': {
 					dependencies: ['contrib.utils.Animations', 'contrib.utils.extensions.HTMLElement']

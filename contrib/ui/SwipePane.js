@@ -1,5 +1,5 @@
 R.require('contrib.ui.SwipePane',
-'contrib.utils.extensions.Document',
+'contrib.events.Touch',
 'contrib.utils.extensions.DOMTweener',
 function() {
 	// How can this code base be shared with a new type of slideshow that can be
@@ -26,9 +26,8 @@ function() {
 		var currentPage = 0;
 		var cache = new Object();
 		var disabled = false;
-		var lastMousePos = 0;
-		var deltaDist = 0;
-		var lastStamp = 0;
+		var touchHelper = new contrib.events.Touch(container);
+		var listener = null;
 		
 		var scrolling = false;
 		
@@ -38,14 +37,16 @@ function() {
 					'dimension': 'offsetWidth',
 					'pos': 'posX',
 					'style': 'width',
-					'offset': 'left'
+					'offset': 'margin-left',
+					'touchEvent': contrib.events.Touch.TOUCH_X
 				};
 			} else {
 				axis = {
 					'dimension': 'offsetHeight',
 					'pos': 'posY',
 					'style': 'height',
-					'offset': 'top'
+					'offset': 'margin-top',
+					'touchEvent': contrib.events.Touch.TOUCH_Y
 				};
 			}
 			
@@ -89,7 +90,7 @@ function() {
 				float: 'left',
 				display: 'block',
 				width: cache.maskWidth + 'px',
-				height: cache.maskHeight + 'px'
+				height: cache.maskHeight + 'px',
 			});
 		};
 		
@@ -97,7 +98,7 @@ function() {
 			if (scrolling) {
 				return;
 			}
-			if (shortCalib) {
+			if (shortCalib === true) {
 				if (!cache.maskSize) {
 					cache.maskSize = mask[axis.dimension];
 				}
@@ -121,6 +122,10 @@ function() {
 				cache.maskHeight = cache.maskSize;
 				cache.maskWidth = mask.offsetWidth;
 				container.style.width = cache.maskWidth + 'px';
+			}
+			
+			for (var i = 0; i < pages.length; i++) {
+				prepareNode(pages[i]);
 			}
 		};
 		
@@ -237,35 +242,24 @@ function() {
 		
 		var touchDown = function(e) {
 			scrolling = true;
-			lastMousePos = document.getMouseXY(e)[axis.pos];
 			cache.lastContentPos = cache.contentPos;
-			container.addEventListener('touchmove', touchMove, false);
-			contrib.events.preventDefaults(e);
 		};
 		
 		var touchUp = function(e) {
-			container.removeEventListener('touchmove', touchMove, false);
-			contrib.events.preventDefaults(e);
-
-			//var speed = Math.round(Math.abs(deltaDist) / ((new Date()).getTime() - lastStamp));
-			
 			touchMove(false);
 			scrolling = false;
 		};
 		
 		var touchMove = function(e) {
 			if (e) {
-				var newPos = document.getMouseXY(e)[axis.pos];
+				var delta = e.delta;
 				
-				var target = cache.contentPos + (newPos ? newPos - lastMousePos : 0);
+				var target = cache.contentPos + (delta ? delta : 0);
 				if (target <= cache.lastContentPos - cache.maskSize + LEFT_OVER || target >= cache.lastContentPos + cache.maskSize - LEFT_OVER) {
 					return;
 				}
 				cache.contentPos = target;
-				lastMousePos = newPos;
-				
 				container.style[axis.offset] = target + 'px';
-				contrib.events.preventDefaults(e);
 				
 				dispatchEvent(target);
 			} else {
@@ -276,6 +270,10 @@ function() {
 		this.setupListeners = function() {
 			container.addEventListener('touchstart', touchDown, false);
 			container.addEventListener('touchend', touchUp, false);
+			touchHelper.enable();
+			if (!listener) {
+				listener = touchHelper.addEventListener(axis.touchEvent, touchMove);
+			}
 			
 			if (window.addEventListener) {
 				window.addEventListener('load', __self__.calibrate, false);
@@ -290,6 +288,11 @@ function() {
 		this.removeListeners = function() {
 			container.removeEventListener('touchstart', touchDown, false);
 			container.removeEventListener('touchend', touchUp, false);
+			touchHelper.dispose();
+			if (listener) {
+				touchHelper.removeEventListener(listener);
+				listener = null;
+			}
 			
 			if (window.removeEventListener) {
 				window.removeEventListener('load', __self__.calibrate, false);

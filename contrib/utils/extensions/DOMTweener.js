@@ -173,7 +173,7 @@ contrib.utils.extensions.DOMTweemer = new (function DOMTweener() {
 		if (utils.Browser.isWebkit && options.duration == tweenObj.duration &&
 			options.timingFunction == tweenObj.timingFunction &&
 			options.unit == tweenObj.unit) {
-			obj.setStyle(property, options.to + options.unit);
+			__obj__.setStyle(property, options.to + options.unit);
 		} else {
 			setup(__obj__, property);
 		}

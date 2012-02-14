@@ -78,7 +78,7 @@ if (!contrib.events) {
 		};
 		this.removeEventListenerByAttributes = function (eventName, id) {
 			if (!events[eventName] || !events[eventName][id]) {
-				console.warn('Remove an event that is non-existent.', eventName, id);
+				console.warn('Removing an event that is non-existent.', eventName, id);
 				return;
 			}
 			delete events[eventName][id];

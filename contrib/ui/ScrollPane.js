@@ -21,8 +21,10 @@ contrib.ui.ScrollPane = function(container, axis, scrollBarObj) {
 	var mask = container.parentNode;
 	var cache = new Object();
 	var disabled = false;
-	var lastMousePos = 0;
-	var lastStamp = 0;
+	var touchHelper = new events.Touch(container);;
+	var listener = null;
+	//var lastMousePos = 0;
+	//var lastStamp = 0;
 	var scrolling = false;
 	
 	var start = this.restart = function() {
@@ -31,14 +33,16 @@ contrib.ui.ScrollPane = function(container, axis, scrollBarObj) {
 				'dimension': 'offsetWidth',
 				'pos': 'posX',
 				'style': 'width',
-				'offset': 'left'
+				'offset': 'margin-left',
+				'touchEvent': events.Touch.TOUCH_X
 			};
 		} else {
 			axis = {
 				'dimension': 'offsetHeight',
 				'pos': 'posY',
 				'style': 'height',
-				'offset': 'top'
+				'offset': 'margin-top',
+				'touchEvent': events.Touch.TOUCH_Y
 			};
 		}
 		
@@ -192,20 +196,23 @@ contrib.ui.ScrollPane = function(container, axis, scrollBarObj) {
 		}
 		
 		if (e) {
-			var newPos = document.getMouseXY(e)[axis.pos];
-			var newStamp = (new Date()).getTime();
+			//var newPos = document.getMouseXY(e)[axis.pos];
+			//var newStamp = (new Date()).getTime();
 			
-			__self__.scrollBy(newPos ? -(newPos - lastMousePos) : 0);
+			__self__.scrollBy(e.delta ? -(e.delta) : 0);
 			
-			lastMousePos = newPos;
-			lastStamp = newStamp;
+			//lastMousePos = newPos;
+			//lastStamp = newStamp;
 		} else {
 			check();
 		}
-		events.preventDefaults(e);
+		if (e.preventDefault) {
+			e.preventDefault();
+		}
+		//events.preventDefaults(e);
 	};
 	
-	var mouseDown = function(e) {
+	/*var mouseDown = function(e) {
 		if (disabled) {
 			return;
 		}
@@ -214,34 +221,40 @@ contrib.ui.ScrollPane = function(container, axis, scrollBarObj) {
 		lastMousePos = document.getMouseXY(e)[axis.pos];
 		lastStamp = (new Date()).getTime();
 		events.preventDefaults(e);
-	};
+	};*/
 	
 	var touchDown = function(e) {
 		if (disabled) {
 			return;
 		}
 		scrolling = true;
-		lastMousePos = document.getMouseXY(e)[axis.pos];
-		lastStamp = (new Date()).getTime();
+		//lastMousePos = document.getMouseXY(e)[axis.pos];
+		//lastStamp = (new Date()).getTime();
 		// perhaps, if we have swipe-only mode, we ignore this move event
-		container.addEventListener('touchmove', mouseMove, false);
-		events.preventDefaults(e);
+		//container.addEventListener('touchmove', mouseMove, false);
+		//events.preventDefaults(e);
 	};
 	
-	var mouseUp = function(e) {
+	/*var mouseUp = function(e) {
 		scrolling = false;
 		mouseMove(false);
-	};
+	};*/
 	
 	var touchUp = function(e) {
 		scrolling = false;
 		// Then, if we have swipe-only, we need not to remove this event listener
 		// and we should pass e to mouseMove...
-		container.removeEventListener('touchmove', mouseMove, false);
+		//container.removeEventListener('touchmove', mouseMove, false);
 		mouseMove(false);
 	};
 	
 	var scrollWheel = function(e) {
+		if (e.srcElement) {
+			e.target = e.srcElement;
+		}
+		if (e.target != container) {
+			return;
+		}
 		scrolling = true;
 		__self__.scrollBy(-events.getWheelDelta(e) * 10);
 		scrolling = false;
@@ -287,6 +300,7 @@ contrib.ui.ScrollPane = function(container, axis, scrollBarObj) {
 				scrollBarObj.bar.tween('opacity', { 'to': 0, 'speed': 1 });
 			});*/
 		}
+		/* Most of this should be moved to a draggable class */
 		if (scrollBarObj) {
 			var knob = scrollBarObj.knob;
 			var button = new events.Mouse(knob);
@@ -357,6 +371,10 @@ contrib.ui.ScrollPane = function(container, axis, scrollBarObj) {
 		container.addEventListener('touchend', touchUp, false);
 		container.addEventListener('mousewheel', scrollWheel, false);
 		container.addEventListener('DOMMouseScroll', scrollWheel, false);
+		touchHelper.enable();
+		if (!listener) {
+			listener = touchHelper.addEventListener(axis.touchEvent, mouseMove);
+		}
 		
 		if (window.addEventListener) {
 			window.addEventListener('load', __self__.calibrate, false);
@@ -373,6 +391,11 @@ contrib.ui.ScrollPane = function(container, axis, scrollBarObj) {
 		container.removeEventListener('touchend', touchUp, false);
 		container.removeEventListener('mousewheel', scrollWheel, false);
 		container.addEventListener('DOMMouseScroll', scrollWheel, false);
+		touchHelper.dispose();
+		if (listener) {
+			touchHelper.removeEventListener(listener);
+			listener = null;
+		}
 		
 		if (window.removeEventListener) {
 			window.removeEventListener('load', __self__.calibrate, false);

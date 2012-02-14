@@ -333,7 +333,7 @@ if (document.createEventObject) {
     		// Temporary fix for nasty bug when assigning event handlers
     		// as properties
     		for (var p in node) {
-    			if (/^on/i.test(p) && node[p] && UEM && node[p] != UEM.wrapper)
+    			if (/^on/i.test(p) && node[p] && window.UEM && node[p] != UEM.wrapper)
     				node.addEventListener(p.substring(2), node[p], false);
     		}
     	}
